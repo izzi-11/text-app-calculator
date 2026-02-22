@@ -52,17 +52,24 @@ COURSE_DATABASE = {
             "has_lab":        False,
             "lab_credits":    0,
             "total_credits":  3,
-            "teacher_photo":  "yasir.jpg"
+            "teacher_photo":  "yasir.jpg",
+            "midterm_marks":  12,
+            "sessional_marks": 18,
+            "final_marks":     46
         },
         {
             "id":             "IDS",
             "course_name":    "Introduction to Data Science",
-            "teacher":        "",
+            "teacher":        "Teacher not set",
             "theory_credits": 2,
             "has_lab":        True,
             "lab_credits":    1,
             "total_credits":  3,
-            "teacher_photo":  "ids_teacher.jpg"
+            "teacher_photo":  "ids_teacher.jpg",
+            "midterm_marks":  7,
+            "sessional_marks": 16,
+            "final_marks":     47,
+            "lab_marks":       70
         },
         {
             "id":             "OS",
@@ -72,7 +79,11 @@ COURSE_DATABASE = {
             "has_lab":        True,
             "lab_credits":    1,
             "total_credits":  4,
-            "teacher_photo":  "saeed_akbar.jpg"
+            "teacher_photo":  "saeed_akbar.jpg",
+            "midterm_marks":  20,
+            "sessional_marks": 16,
+            "final_marks":     40,
+            "lab_marks":       80
         },
         {
             "id":             "SDA",
@@ -82,7 +93,10 @@ COURSE_DATABASE = {
             "has_lab":        False,
             "lab_credits":    0,
             "total_credits":  3,
-            "teacher_photo":  "mubashir.jpg"
+            "teacher_photo":  "mubashir.jpg",
+            "midterm_marks":  24,
+            "sessional_marks": 17,
+            "final_marks":     47
         },
         {
             "id":             "WDD",
@@ -92,7 +106,11 @@ COURSE_DATABASE = {
             "has_lab":        True,
             "lab_credits":    1,
             "total_credits":  3,
-            "teacher_photo":  "nasir_khan.jpg"
+            "teacher_photo":  "nasir_khan.jpg",
+            "midterm_marks":  7,
+            "sessional_marks": 18,
+            "final_marks":     47,
+            "lab_marks":       90
         },
     ],
     "Semester 6": [],
