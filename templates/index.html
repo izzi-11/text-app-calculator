@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SE Grade Calculator — Software Engineering</title>
+    <meta name="description"
+        content="Professional GPA & CGPA calculator for Software Engineering students. Track marks, predict grades, and export reports." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+    <!-- Confetti Library -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+</head>
+
+<body>
+
+    <!-- Hardware accelerated background layer -->
+    <div class="parallax-bg" id="parallaxBg"></div>
+
+    <!-- Particle Background -->
+    <canvas id="particleCanvas"></canvas>
+
+    <!-- ════════════════════════ HEADER ════════════════════════════ -->
+    <header class="site-header">
+        <div class="header-inner">
+            <div class="header-logo">
+                <div class="logo-icon-wrap">⚙️</div>
+                <div>
+                    <div class="logo-title">SE Grade Calculator</div>
+                    <div class="logo-sub">Software Engineering Program</div>
+                </div>
+            </div>
+            <div class="header-right">
+                <span id="clockDisplay" class="clock"></span>
+                <span id="saveStatus" class="save-status"></span>
+                <button class="theme-toggle" id="themeToggle" title="Toggle Lighting Mode">
+                    <span class="theme-icon-sun">☀️</span>
+                    <span class="theme-icon-moon">🌙</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ════════════════════════ HERO ════════════════════════════ -->
+    <div class="hero-banner">
+        <div class="hero-badge">Software Engineering · GPA Tracker</div>
+        <h1 class="hero-title">Calculate Your <span class="grad" id="typedText"></span><span
+                class="cursor-blink">|</span></h1>
+        <p class="hero-sub">Track marks, predict grades, and export beautiful reports — all in one place.</p>
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <div class="hero-stat-val">4.00</div>
+                <div class="hero-stat-label">Max GPA</div>
+            </div>
+            <div class="hero-stat">
+                <div class="hero-stat-val">8</div>
+                <div class="hero-stat-label">Grade Levels</div>
+            </div>
+            <div class="hero-stat">
+                <div class="hero-stat-val">100%</div>
+                <div class="hero-stat-label">Accurate</div>
+            </div>
+            <div class="hero-stat">
+                <div class="hero-stat-val">PDF+XLS</div>
+                <div class="hero-stat-label">Export Formats</div>
+            </div>
+        </div>
+    </div>
+
+    <main class="page-body">
+
+        <!-- ══════════════ PREVIOUS CGPA ══════════════════════════ -->
+        <section class="card reveal">
+            <div class="card-label-pill">📊 Previous Record</div>
+            <p class="hint">Enter your CGPA and credits from previous semesters to calculate your overall CGPA.</p>
+            <div class="prev-grid">
+                <div class="input-block">
+                    <label for="prevCGPA">Previous CGPA</label>
+                    <input id="prevCGPA" class="input-field mono" type="number" min="0" max="4" step="0.01"
+                        placeholder="0.00" value="0" />
+                </div>
+                <div class="input-block">
+                    <label for="prevCredits">Previous Total Credit Hours</label>
+                    <input id="prevCredits" class="input-field mono" type="number" min="0" step="1" placeholder="0"
+                        value="0" />
+                </div>
+            </div>
+        </section>
+
+        <!-- ══════════════ SEMESTER BROWSER ═══════════════════════ -->
+        <section class="card reveal">
+            <div class="card-label-pill">📚 Semesters &amp; Courses</div>
+            <h2>Select a Semester</h2>
+            <p class="hint">Click a semester row to expand all its courses. Then click any course to enter marks.</p>
+            <div id="semesterList" class="semester-list"></div>
+        </section>
+
+        <!-- ══════════════ COURSE PANEL ════════════════════════════ -->
+        <!--  Shown when a course row is clicked  -->
+        <section class="card course-panel hidden" id="coursePanel">
+
+            <!-- Header: course name + teacher photo -->
+            <div class="panel-header">
+                <div class="panel-title-row">
+                    <div class="panel-text-col">
+                        <div class="card-label-pill" id="panelSemLabel">Semester</div>
+                        <h2 id="panelCourseName">Course Name</h2>
+                        <div id="panelTeacherName" class="panel-teacher">Teacher</div>
+                    </div>
+                    <div class="panel-photo-col">
+                        <div class="pp-photo-wrap">
+                            <img id="panelPhoto" class="pp-photo" src="/static/images/default.svg"
+                                onerror="this.src='/static/images/default.svg'" alt="Teacher Photo" />
+                            <label class="pp-overlay" title="Click to upload teacher photo">
+                                📷
+                                <span class="pp-overlay-text">Upload Photo</span>
+                                <input type="file" accept="image/*" id="panelPhotoInput" style="display:none"
+                                    onchange="handlePanelPhoto(this)" />
+                            </label>
+                        </div>
+                        <div class="pp-hint">Hover &amp; click 📷<br />to upload photo</div>
+                    </div>
+                </div>
+
+                <!-- Credit chips -->
+                <div class="panel-meta-row">
+                    <span class="meta-chip" id="panelTheoryCr"></span>
+                    <span class="meta-chip lab-chip hidden" id="panelLabCr"></span>
+                    <span class="meta-chip total-chip" id="panelTotalCr"></span>
+                </div>
+            </div>
+
+            <!-- Panel body -->
+            <div class="panel-body">
+
+                <!-- Marks mode toggle -->
+                <div class="marks-mode-bar">
+                    <button id="btnBdPanel" class="mode-btn-sm active" onclick="setPanelMode('breakdown')">
+                        Mid + Sessional + Final
+                    </button>
+                    <button id="btn100Panel" class="mode-btn-sm" onclick="setPanelMode('total')">
+                        Out of 100
+                    </button>
+                </div>
+
+                <!-- Breakdown mode inputs (Mid/30 + Sessional/20 + Final/50) -->
+                <div id="panelBreakdown" class="marks-grid">
+                    <div class="mark-block">
+                        <label>🖊 Midterm <span class="max-label">/ 30</span></label>
+                        <input id="pMid" class="input-field mono" type="number" min="0" max="30" placeholder="0"
+                            oninput="livePanel()" />
+                        <div class="mark-hint">30% of total marks</div>
+                    </div>
+                    <div class="mark-block">
+                        <label>📝 Sessional <span class="max-label">/ 20</span></label>
+                        <input id="pSes" class="input-field mono" type="number" min="0" max="20" placeholder="0"
+                            oninput="livePanel()" />
+                        <div class="mark-hint">Assignments + Quizzes · 20%</div>
+                    </div>
+                    <div class="mark-block">
+                        <label>📖 Final Exam <span class="max-label">/ 50</span></label>
+                        <input id="pFin" class="input-field mono" type="number" min="0" max="50" placeholder="0"
+                            oninput="livePanel()" />
+                        <div class="mark-hint">50% of total marks</div>
+                    </div>
+                    <div class="mark-block live-box">
+                        <label>⚡ Live Preview</label>
+                        <div class="live-total" id="panelLivePct">—</div>
+                        <div class="live-grade" id="panelLiveGrade"></div>
+                        <div class="live-remark" id="panelLiveRemark"></div>
+                    </div>
+                </div>
+
+                <!-- Out-of-100 mode input -->
+                <div id="panelTotal100" class="marks-grid hidden">
+                    <div class="mark-block">
+                        <label>🎯 Total Marks <span class="max-label">/ 100</span></label>
+                        <input id="pTot" class="input-field mono" type="number" min="0" max="100" placeholder="0"
+                            oninput="livePanel()" />
+                        <div class="mark-hint">Enter your final percentage directly</div>
+                    </div>
+                    <div class="mark-block live-box">
+                        <label>⚡ Live Preview</label>
+                        <div class="live-total" id="panelLivePct2">—</div>
+                        <div class="live-grade" id="panelLiveGrade2"></div>
+                        <div class="live-remark" id="panelLiveRemark2"></div>
+                    </div>
+                </div>
+
+                <!-- Lab marks section (shown only when course has lab) -->
+                <div id="panelLabSection" class="lab-marks-section hidden">
+                    <div class="lab-section-header">
+                        <span class="lab-section-icon">🧪</span>
+                        <div>
+                            <div class="lab-section-title">Lab Marks</div>
+                            <div class="lab-section-sub">1 Credit Hour · Graded independently out of 100</div>
+                        </div>
+                        <span class="lab-badge">LAB</span>
+                    </div>
+                    <div class="marks-grid lab-marks-grid">
+                        <div class="mark-block">
+                            <label>🧪 Lab Marks <span class="max-label">/ 100</span></label>
+                            <input id="pLab" class="input-field mono" type="number" min="0" max="100" placeholder="0"
+                                oninput="livePanel()" />
+                            <div class="mark-hint">Lab assessment · 1 credit hour</div>
+                        </div>
+                        <div class="mark-block live-box lab-live-box">
+                            <label>🧪 Lab Preview</label>
+                            <div class="live-total" id="panelLabLivePct">—</div>
+                            <div class="live-grade" id="panelLabLiveGrade"></div>
+                            <div class="live-remark" id="panelLabLiveRemark"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action buttons -->
+                <div class="panel-actions">
+                    <button class="btn btn-save" onclick="saveCourse()">💾 Save Marks &amp; Photo</button>
+                    <button class="btn btn-calc" onclick="calculateFromPanel()">⚡ Calculate GPA</button>
+                    <button class="btn btn-outline" onclick="closePanel()">✕ Close</button>
+                </div>
+                <div id="panelSaveMsg" class="save-msg hidden"></div>
+
+            </div><!-- end panel-body -->
+        </section>
+
+        <!-- ══════════════ RESULTS ═════════════════════════════════ -->
+        <section class="card hidden" id="resultsSection">
+            <div class="results-header-row">
+                <div>
+                    <div class="card-label-pill">🎓 Results</div>
+                    <h2>Your Grade Report</h2>
+                </div>
+                <div class="export-row">
+                    <button class="btn btn-excel" onclick="exportExcel()">📊 Export Excel</button>
+                    <button class="btn btn-pdf" onclick="exportPDF()">📄 Download PDF</button>
+                </div>
+            </div>
+
+            <!-- Summary cards -->
+            <div class="summary-strip">
+                <div class="summary-pill">
+                    <div class="pill-label">Semester GPA</div>
+                    <div class="pill-val" id="rGPA">—</div>
+                </div>
+                <div class="summary-pill highlight">
+                    <div class="pill-label">Overall CGPA</div>
+                    <div class="pill-val" id="rCGPA">—</div>
+                </div>
+                <div class="summary-pill">
+                    <div class="pill-label">Sem Credits</div>
+                    <div class="pill-val" id="rSemCr">—</div>
+                </div>
+                <div class="summary-pill">
+                    <div class="pill-label">Total Credits</div>
+                    <div class="pill-val" id="rTotCr">—</div>
+                </div>
+            </div>
+
+            <!-- Results table -->
+            <div class="results-scroll">
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>Course</th>
+                            <th>Teacher</th>
+                            <th>Credits</th>
+                            <th>Mid /30</th>
+                            <th>Ses /20</th>
+                            <th>Final /50</th>
+                            <th>Theory %</th>
+                            <th>Lab /100</th>
+                            <th>Lab Grade</th>
+                            <th>Grade</th>
+                            <th>GP</th>
+                            <th>Remark</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ══════════════ WHAT-IF PREDICTOR ══════════════════════ -->
+        <section class="card predictor-card reveal">
+            <div class="card-label-pill">🎯 What-If Predictor</div>
+            <h2>Preview GPA Before Exams</h2>
+            <p class="hint">
+                Enter expected marks to instantly see how they affect your GPA and CGPA.
+                Uses your Previous Record values above.
+            </p>
+
+            <!-- Mode toggle -->
+            <div class="mode-toggle-bar">
+                <button id="modeBreakdown" class="mode-btn active" onclick="setPredMode('breakdown')">
+                    📊 Breakdown Mode
+                </button>
+                <button id="modeTotal" class="mode-btn" onclick="setPredMode('total')">
+                    💯 Out-of-100 Mode
+                </button>
+            </div>
+
+            <!-- Breakdown inputs -->
+            <div id="predBreakdown" class="predictor-grid">
+                <div class="input-block">
+                    <label>🖊 Midterm <span class="max-label">/ 30</span></label>
+                    <input id="predMid" class="input-field mono" type="number" min="0" max="30" placeholder="0"
+                        oninput="predictLive()" />
+                </div>
+                <div class="input-block">
+                    <label>📝 Sessional <span class="max-label">/ 20</span></label>
+                    <input id="predSes" class="input-field mono" type="number" min="0" max="20" placeholder="0"
+                        oninput="predictLive()" />
+                </div>
+                <div class="input-block">
+                    <label>📖 Final <span class="max-label">/ 50</span></label>
+                    <input id="predFin" class="input-field mono" type="number" min="0" max="50" placeholder="0"
+                        oninput="predictLive()" />
+                </div>
+                <div class="input-block">
+                    <label>Credit Hours</label>
+                    <input id="predCr" class="input-field mono" type="number" min="1" max="6" placeholder="3" value="3"
+                        oninput="predictLive()" />
+                </div>
+            </div>
+
+            <!-- Out-of-100 inputs -->
+            <div id="predTotal" class="predictor-grid hidden">
+                <div class="input-block">
+                    <label>🎯 Total Marks <span class="max-label">/ 100</span></label>
+                    <input id="predTot" class="input-field mono" type="number" min="0" max="100" placeholder="0"
+                        oninput="predictLive()" />
+                </div>
+                <div class="input-block">
+                    <label>Credit Hours</label>
+                    <input id="predCr2" class="input-field mono" type="number" min="1" max="6" placeholder="3" value="3"
+                        oninput="predictLive()" />
+                </div>
+            </div>
+
+            <!-- Prediction result -->
+            <div id="predictResult" class="predict-result hidden">
+                <div class="predict-row">
+                    <div class="predict-box">
+                        <div class="pb-label">Total %</div>
+                        <div class="pb-val" id="prPct">—</div>
+                    </div>
+                    <div class="predict-box">
+                        <div class="pb-label">Grade</div>
+                        <div class="pb-val" id="prGrade">—</div>
+                    </div>
+                    <div class="predict-box">
+                        <div class="pb-label">Predicted CGPA</div>
+                        <div class="pb-val" id="prCGPA">—</div>
+                    </div>
+                    <div class="predict-box">
+                        <div class="pb-label">CGPA Change</div>
+                        <div class="pb-val" id="prChange">—</div>
+                    </div>
+                </div>
+                <div id="prRemark" class="predict-remark"></div>
+            </div>
+        </section>
+
+        <!-- ══════════════ GRADING POLICY ══════════════════════════ -->
+        <section class="card reveal">
+            <div class="card-label-pill">📋 Grading Policy</div>
+            <div class="policy-grid">
+
+                <div>
+                    <h3>Marks Distribution</h3>
+                    <table class="policy-table">
+                        <thead>
+                            <tr>
+                                <th>Assessment</th>
+                                <th>Frequency</th>
+                                <th>Max Marks</th>
+                                <th>Weight</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Mid Term</td>
+                                <td>1</td>
+                                <td>30</td>
+                                <td>30%</td>
+                            </tr>
+                            <tr>
+                                <td>Final Term</td>
+                                <td>1</td>
+                                <td>50</td>
+                                <td>50%</td>
+                            </tr>
+                            <tr>
+                                <td>Sessional (Assignments &amp; Quizzes)</td>
+                                <td>Assig: 4, Quiz: 2</td>
+                                <td>20</td>
+                                <td>20%</td>
+                            </tr>
+                            <tr class="total-row">
+                                <td><strong>Total</strong></td>
+                                <td></td>
+                                <td><strong>100</strong></td>
+                                <td><strong>100%</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div>
+                    <h3>Letter Grades &amp; Remarks</h3>
+                    <table class="policy-table">
+                        <thead>
+                            <tr>
+                                <th>Percent</th>
+                                <th>Grade</th>
+                                <th>Grade Point</th>
+                                <th>Remark</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>85 – 100</td>
+                                <td>A</td>
+                                <td>4.00</td>
+                                <td>Excellent</td>
+                            </tr>
+                            <tr>
+                                <td>78 – 84</td>
+                                <td>B+</td>
+                                <td>3.50</td>
+                                <td>Outstanding</td>
+                            </tr>
+                            <tr>
+                                <td>70 – 77</td>
+                                <td>B</td>
+                                <td>3.00</td>
+                                <td>Good</td>
+                            </tr>
+                            <tr>
+                                <td>65 – 69</td>
+                                <td>C+</td>
+                                <td>2.50</td>
+                                <td>Above Average</td>
+                            </tr>
+                            <td>60 – 64</td>
+                            <td>C</td>
+                            <td>2.00</td>
+                            <td>Average</td>
+                            </tr>
+                            <tr>
+                                <td>55 – 59</td>
+                                <td>D+</td>
+                                <td>1.50</td>
+                                <td>Below Average</td>
+                            </tr>
+                            <tr>
+                                <td>50 – 54</td>
+                                <td>D</td>
+                                <td>1.00</td>
+                                <td>Poor but Passing</td>
+                            </tr>
+                            <tr>
+                                <td>&lt; 50</td>
+                                <td>F</td>
+                                <td>0.00</td>
+                                <td>Failing</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+
+    <!-- ════════════════════════ JAVASCRIPT ════════════════════════ -->
+    <!-- Success Modal -->
+    <div id="successModal" class="modal-overlay">
+        <div class="success-modal" id="modalContent">
+            <div class="modal-icon" id="modalIcon">✨</div>
+            <h2 class="modal-title" id="modalTitle">Impressive!</h2>
+            <p class="modal-msg" id="modalMsg">Keep pushing for the stars!</p>
+            <div class="modal-gpa-box">
+                <div class="mg-label">Result GPA</div>
+                <div class="mg-val" id="modalGPA">0.00</div>
+            </div>
+            <button class="btn btn-modal-close" onclick="closeSuccessModal()">Keep it Up!</button>
+        </div>
+    </div>
+
+    <script>
+        // ── Theme Management ─────────────────────────────────────────────
+        (function () {
+            const toggle = document.getElementById('themeToggle');
+            const root = document.documentElement;
+
+            function setTheme(theme) {
+                root.setAttribute('data-theme', theme);
+                localStorage.setItem('theme', theme);
+            }
+
+            const savedTheme = localStorage.getItem('theme') ||
+                (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+
+            setTheme(savedTheme);
+
+            if (toggle) {
+                toggle.addEventListener('click', () => {
+                    const current = root.getAttribute('data-theme');
+                    setTheme(current === 'light' ? 'dark' : 'light');
+                });
+            }
+        })();
+
+        // ── App state ────────────────────────────────────────────────────
+        var semesters = [];       // list of semester names from API
+        var semCourses = {};       // { "Semester 5": [...courses...] }
+        var openSem = null;     // currently expanded semester name
+        var activeC = null;     // currently open course object
+        var activeSem = null;     // semester of the currently open course
+        var panelMode = 'breakdown';
+        var predMode = 'breakdown';
+        var lastResults = null;     // last calculate() response (for export)
+        var panelPhotoB64 = null;
+        var panelPhotoName = null;
+
+
+        // ── Initialise ───────────────────────────────────────────────────
+        window.addEventListener('DOMContentLoaded', async function () {
+            semesters = await fetch('/api/semesters').then(function (r) { return r.json(); });
+            renderSemesterList();
+            tickClock();
+            setInterval(tickClock, 1000);
+        });
+
+        function tickClock() {
+            document.getElementById('clockDisplay').textContent =
+                new Date().toLocaleString('en-PK', {
+                    weekday: 'short', hour: '2-digit',
+                    minute: '2-digit', second: '2-digit'
+                });
+        }
+
+
+        // ── Semester list ────────────────────────────────────────────────
+        function renderSemesterList() {
+            var el = document.getElementById('semesterList');
+            el.innerHTML = semesters.map(function (sem) {
+                var id = safeId(sem);
+                return (
+                    '<div class="sem-row" id="semRow_' + id + '">' +
+                    '<div class="sem-header" onclick="toggleSem(\'' + id + '\', \'' + sem + '\')">' +
+                    '<div class="sem-header-left">' +
+                    '<span class="sem-arrow" id="arrow_' + id + '">▶</span>' +
+                    '<span class="sem-name">' + sem + '</span>' +
+                    '<span class="sem-badge" id="badge_' + id + '">Click to load</span>' +
+                    '</div>' +
+                    '<div class="sem-header-right" id="semGPA_' + id + '"></div>' +
+                    '</div>' +
+                    '<div class="sem-courses hidden" id="semCourses_' + id + '"></div>' +
+                    '</div>'
+                );
+            }).join('');
+        }
+
+
+        async function toggleSem(id, sem) {
+            var wasOpen = (openSem === sem);
+
+            // Close all semesters
+            semesters.forEach(function (s) {
+                var sid = safeId(s);
+                document.getElementById('semCourses_' + sid).classList.add('hidden');
+                var arrow = document.getElementById('arrow_' + sid);
+                arrow.textContent = '▶';
+                arrow.classList.remove('open');
+            });
+
+            if (wasOpen) { openSem = null; return; }
+
+            // Open selected semester
+            openSem = sem;
+            var arrow = document.getElementById('arrow_' + id);
+            arrow.textContent = '▼';
+            arrow.classList.add('open');
+
+            // Load courses if not cached
+            if (!semCourses[sem]) {
+                document.getElementById('badge_' + id).textContent = 'Loading…';
+                var courses = await fetch('/api/courses/' + encodeURIComponent(sem)).then(function (r) { return r.json(); });
+                semCourses[sem] = courses;
+            }
+
+            renderSemCourses(sem);
+            document.getElementById('semCourses_' + id).classList.remove('hidden');
+
+            var courses = semCourses[sem];
+            var totalCr = courses.reduce(function (sum, c) { return sum + c.total_credits; }, 0);
+
+            // Smart Credits: Auto-fill predictor current credits when semester is opened
+            const predCr = document.getElementById('predCr');
+            const predCr2 = document.getElementById('predCr2');
+            if (predCr) predCr.value = totalCr || 3;
+            if (predCr2) predCr2.value = totalCr || 3;
+
+            document.getElementById('badge_' + id).textContent =
+                courses.length + ' course' + (courses.length !== 1 ? 's' : '') + ' · ' + totalCr + ' credits';
+        }
+
+
+        // ── Course row list ──────────────────────────────────────────────
+        function renderSemCourses(sem) {
+            var courses = semCourses[sem];
+            var el = document.getElementById('semCourses_' + safeId(sem));
+
+            if (!courses || courses.length === 0) {
+                el.innerHTML = `
+                    <div class="not-available-box" style="padding: 40px 20px; text-align: center; color: var(--text3); border: 1px dashed var(--border); border-radius: var(--radius); margin: 15px 0; background: rgba(255,255,255,0.02);">
+                        <div style="font-size: 2rem; margin-bottom: 12px; filter: grayscale(1) opacity(0.5);">📖</div>
+                        <div style="font-weight: 700; font-size: 1rem; color: var(--text2); letter-spacing: -0.01em;">Courses Not Added Yet</div>
+                        <div style="font-size: 0.8rem; max-width: 250px; margin: 4px auto 0; line-height: 1.4;">The curriculum for ${sem} will be available here soon.</div>
+                    </div>
+                `;
+                return;
+            }
+
+            el.innerHTML = courses.map(function (c) {
+                // Check if marks are already saved
+                var hasSaved = (c.midterm_marks !== undefined && c.midterm_marks !== null && c.midterm_marks !== '')
+                    || (c.total_100_marks !== undefined && c.total_100_marks !== '');
+
+                // Compute grade chip if marks exist
+                var gradeChip = '';
+                if (hasSaved) {
+                    var pct = c.out_of_100
+                        ? parseFloat(c.total_100_marks || 0)
+                        : computePercent(
+                            parseFloat(c.midterm_marks || 0),
+                            parseFloat(c.sessional_marks || 0),
+                            parseFloat(c.final_marks || 0)
+                        );
+                    var g = gradeFromPct(pct).grade;
+                    gradeChip = '<span class="mini-grade grade-chip g-' + g.replace('+', 'p') + '">' + g + '</span>';
+                }
+
+                var labTag = c.has_lab
+                    ? '<span class="tag lab-tag">Lab (' + c.lab_credits + ' cr)</span>'
+                    : '<span class="tag no-lab-tag">No Lab</span>';
+
+                return (
+                    '<div class="course-row" onclick="openCourse(\'' + safeId(sem) + '\', \'' + sem + '\', \'' + c.id + '\')">' +
+                    '<img class="cr-photo"' +
+                    ' src="/static/images/' + (c.teacher_photo || 'default.svg') + '"' +
+                    ' onerror="this.src=\'/static/images/default.svg\'"' +
+                    ' alt="Teacher" />' +
+                    '<div class="cr-info">' +
+                    '<div class="cr-name">' + c.course_name + '</div>' +
+                    '<div class="cr-teacher">' + (c.teacher || '<em>Teacher not set</em>') + '</div>' +
+                    '<div class="cr-tags">' +
+                    '<span class="tag">' + c.theory_credits + ' theory cr</span>' +
+                    labTag +
+                    '<span class="tag total-tag">' + c.total_credits + ' total cr</span>' +
+                    '</div>' +
+                    '</div>' +
+                    '<div class="cr-right">' +
+                    gradeChip +
+                    (hasSaved ? '<span class="saved-dot" title="Marks saved">💾</span>' : '') +
+                    '<span class="cr-arrow">›</span>' +
+                    '</div>' +
+                    '</div>'
+                );
+            }).join('');
+        }
+
+
+        // ── Open course panel ────────────────────────────────────────────
+        function openCourse(semId, sem, courseId) {
+            var course = semCourses[sem].find(function (c) { return c.id === courseId; });
+            if (!course) return;
+
+            activeC = Object.assign({}, course);
+            activeSem = sem;
+            panelPhotoB64 = null;
+            panelPhotoName = null;
+
+            // Fill in text fields
+            document.getElementById('panelSemLabel').textContent = sem;
+            document.getElementById('panelCourseName').textContent = course.course_name;
+            document.getElementById('panelTeacherName').textContent = course.teacher || 'Teacher not set';
+
+            // Credit chips
+            document.getElementById('panelTheoryCr').textContent = 'Theory: ' + course.theory_credits + ' cr';
+            document.getElementById('panelTotalCr').textContent = 'Total: ' + course.total_credits + ' cr';
+            var labChip = document.getElementById('panelLabCr');
+            if (course.has_lab) {
+                labChip.textContent = 'Lab: ' + course.lab_credits + ' cr';
+                labChip.classList.remove('hidden');
+            } else {
+                labChip.classList.add('hidden');
+            }
+
+            // Teacher photo
+            document.getElementById('panelPhoto').src =
+                '/static/images/' + (course.teacher_photo || 'default.svg') + '?t=' + Date.now();
+
+            // Restore saved marks
+            var mode = course.input_mode || (course.out_of_100 ? 'total' : 'breakdown');
+            setPanelMode(mode);
+            document.getElementById('pMid').value = course.midterm_marks != null ? course.midterm_marks : '';
+            document.getElementById('pSes').value = course.sessional_marks != null ? course.sessional_marks : '';
+            document.getElementById('pFin').value = course.final_marks != null ? course.final_marks : '';
+            document.getElementById('pTot').value = course.total_100_marks != null ? course.total_100_marks : '';
+
+            // Lab section
+            var labSection = document.getElementById('panelLabSection');
+            if (course.has_lab) {
+                labSection.classList.remove('hidden');
+                document.getElementById('pLab').value = course.lab_marks != null ? course.lab_marks : '';
+            } else {
+                labSection.classList.add('hidden');
+                document.getElementById('pLab').value = '';
+            }
+            livePanel();
+
+            // Show panel
+            document.getElementById('panelSaveMsg').classList.add('hidden');
+            document.getElementById('coursePanel').classList.remove('hidden');
+            document.getElementById('coursePanel').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function closePanel() {
+            document.getElementById('coursePanel').classList.add('hidden');
+            activeC = null;
+            activeSem = null;
+        }
+
+
+        // ── Panel mode toggle ────────────────────────────────────────────
+        function setPanelMode(mode) {
+            panelMode = mode;
+            document.getElementById('btnBdPanel').classList.toggle('active', mode === 'breakdown');
+            document.getElementById('btn100Panel').classList.toggle('active', mode === 'total');
+            document.getElementById('panelBreakdown').classList.toggle('hidden', mode === 'total');
+            document.getElementById('panelTotal100').classList.toggle('hidden', mode === 'breakdown');
+            if (activeC) activeC.input_mode = mode;
+            livePanel();
+        }
+
+
+        // ── Live preview in panel ────────────────────────────────────────
+        function livePanel() {
+            if (panelMode === 'total') {
+                var pct = parseFloat(document.getElementById('pTot').value) || 0;
+                var result = gradeFromPct(pct);
+                document.getElementById('panelLivePct2').textContent = pct + '%';
+                var g2 = document.getElementById('panelLiveGrade2');
+                g2.textContent = result.grade;
+                g2.className = 'live-grade g-' + result.grade.replace('+', 'p');
+                document.getElementById('panelLiveRemark2').textContent = result.remark;
+            } else {
+                var mid = parseFloat(document.getElementById('pMid').value) || 0;
+                var ses = parseFloat(document.getElementById('pSes').value) || 0;
+                var fin = parseFloat(document.getElementById('pFin').value) || 0;
+                var pct = computePercent(mid, ses, fin);
+                var result = gradeFromPct(pct);
+                document.getElementById('panelLivePct').textContent = pct + '%';
+                var g = document.getElementById('panelLiveGrade');
+                g.textContent = result.grade;
+                g.className = 'live-grade g-' + result.grade.replace('+', 'p');
+                document.getElementById('panelLiveRemark').textContent = result.remark;
+            }
+            // Lab live preview
+            if (activeC && activeC.has_lab) {
+                var labPct = parseFloat(document.getElementById('pLab').value) || 0;
+                var labResult = gradeFromPct(labPct);
+                document.getElementById('panelLabLivePct').textContent = labPct + '%';
+                var gl = document.getElementById('panelLabLiveGrade');
+                gl.textContent = labResult.grade;
+                gl.className = 'live-grade g-' + labResult.grade.replace('+', 'p');
+                document.getElementById('panelLabLiveRemark').textContent = labResult.remark;
+            }
+        }
+
+
+        // ── Teacher photo upload ─────────────────────────────────────────
+        function handlePanelPhoto(input) {
+            if (!input.files || !input.files[0]) return;
+            var file = input.files[0];
+            var ext = file.name.split('.').pop().toLowerCase();
+            panelPhotoName = (activeSem + '_' + activeC.id + '.' + ext).replace(/[^a-z0-9._]/gi, '_');
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                panelPhotoB64 = e.target.result;
+                document.getElementById('panelPhoto').src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+
+        // ── Save course ──────────────────────────────────────────────────
+        async function saveCourse() {
+            if (!activeC) return;
+
+            var entry = {
+                semester: activeSem,
+                course_id: activeC.id,
+                teacher: document.getElementById('panelTeacherName').textContent,
+                input_mode: panelMode,
+                out_of_100: panelMode === 'total',
+                midterm_marks: panelMode === 'breakdown' ? (parseFloat(document.getElementById('pMid').value) || 0) : null,
+                sessional_marks: panelMode === 'breakdown' ? (parseFloat(document.getElementById('pSes').value) || 0) : null,
+                final_marks: panelMode === 'breakdown' ? (parseFloat(document.getElementById('pFin').value) || 0) : null,
+                total_100_marks: panelMode === 'total' ? (parseFloat(document.getElementById('pTot').value) || 0) : null,
+                lab_marks: activeC.has_lab ? (parseFloat(document.getElementById('pLab').value) || 0) : null,
+            };
+
+            if (panelPhotoB64 && panelPhotoName) {
+                entry.photo_b64 = panelPhotoB64;
+                entry.photo_filename = panelPhotoName;
+            }
+
+            var res = await fetch('/api/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(entry),
+            }).then(function (r) { return r.json(); });
+
+            if (res.ok) {
+                // Update local cache so the course row refreshes
+                var idx = semCourses[activeSem].findIndex(function (c) { return c.id === activeC.id; });
+                if (idx >= 0) {
+                    semCourses[activeSem][idx] = Object.assign(
+                        {}, semCourses[activeSem][idx], entry,
+                        { teacher_photo: panelPhotoName || semCourses[activeSem][idx].teacher_photo }
+                    );
+                }
+                renderSemCourses(activeSem);
+                showSaveMsg('✅ Saved successfully!', 'success');
+                showSaveStatus('Saved');
+            } else {
+                showSaveMsg('❌ Save failed: ' + (res.error || 'Unknown error'), 'error');
+            }
+        }
+
+        function showSaveMsg(text, type) {
+            var el = document.getElementById('panelSaveMsg');
+            el.textContent = text;
+            el.className = 'save-msg ' + type;
+            el.classList.remove('hidden');
+            setTimeout(function () { el.classList.add('hidden'); }, 3000);
+        }
+
+        function showSaveStatus(text) {
+            var el = document.getElementById('saveStatus');
+            el.textContent = '💾 ' + text;
+            el.classList.add('visible');
+            setTimeout(function () { el.classList.remove('visible'); }, 2500);
+        }
+
+
+        // ── Calculate GPA (uses full semester) ───────────────────────────
+        async function calculateFromPanel() {
+            if (!activeSem || !semCourses[activeSem]) return;
+
+            var prevCGPA = parseFloat(document.getElementById('prevCGPA').value) || 0;
+            var prevCredits = parseFloat(document.getElementById('prevCredits').value) || 0;
+
+            // Push current panel values into local cache before calculating
+            var idx = semCourses[activeSem].findIndex(function (c) { return c.id === activeC.id; });
+            if (idx >= 0) {
+                semCourses[activeSem][idx] = Object.assign({}, semCourses[activeSem][idx], {
+                    input_mode: panelMode,
+                    out_of_100: panelMode === 'total',
+                    midterm_marks: parseFloat(document.getElementById('pMid').value) || 0,
+                    sessional_marks: parseFloat(document.getElementById('pSes').value) || 0,
+                    final_marks: parseFloat(document.getElementById('pFin').value) || 0,
+                    total_100_marks: parseFloat(document.getElementById('pTot').value) || 0,
+                    lab_marks: activeC.has_lab ? (parseFloat(document.getElementById('pLab').value) || 0) : null,
+                });
+            }
+
+            var coursesPayload = semCourses[activeSem].map(function (c) {
+                return Object.assign({}, c, { out_of_100: c.out_of_100 || c.input_mode === 'total' });
+            });
+
+            var data = await fetch('/api/calculate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    courses: coursesPayload,
+                    previous_cgpa: prevCGPA,
+                    previous_credits: prevCredits,
+                    semester: activeSem,
+                }),
+            }).then(function (r) { return r.json(); });
+
+            if (data.error) { alert(data.error); return; }
+
+            // Tiered motivational feedback
+            if (data.current_gpa >= 2.7) {
+                showSuccessFeedback(data.current_gpa);
+            }
+
+            lastResults = Object.assign({}, data, { semester: activeSem });
+            showResults(data);
+        }
+
+
+        // ── Render results section ───────────────────────────────────────
+        function showResults(data) {
+            document.getElementById('rGPA').textContent = data.current_gpa;
+            document.getElementById('rCGPA').textContent = data.overall_cgpa;
+            document.getElementById('rSemCr').textContent = data.sem_credits;
+            document.getElementById('rTotCr').textContent = data.overall_credits;
+
+            var tbody = document.getElementById('resultsBody');
+            tbody.innerHTML = data.results.map(function (r) {
+                var labNote = r.has_lab
+                    ? '<span class="tag lab-tag">' + r.lab_credits + 'L</span>'
+                    : '';
+                var photo = r.teacher_photo || 'default.svg';
+                var gradeClass = 'grade-chip g-' + r.grade.replace('+', 'p');
+
+                var markCells;
+                if (r.out_of_100) {
+                    markCells = '<td class="mono" colspan="3" style="text-align:center;font-style:italic">'
+                        + 'Out-of-100: ' + r.total_100_marks + '%</td>';
+                } else {
+                    markCells = '<td class="mono">' + r.midterm_marks + '</td>'
+                        + '<td class="mono">' + r.sessional_marks + '</td>'
+                        + '<td class="mono">' + r.final_marks + '</td>';
+                }
+
+                // Lab cells
+                var labCells = '';
+                if (r.has_lab) {
+                    var labGradeClass = 'grade-chip g-' + (r.lab_grade || 'F').replace('+', 'p');
+                    labCells = '<td class="mono">' + (r.lab_marks != null ? r.lab_marks : '—') + '</td>'
+                        + '<td><span class="' + labGradeClass + '">' + (r.lab_grade || '—') + '</span></td>';
+                } else {
+                    labCells = '<td class="mono muted">—</td><td class="muted">—</td>';
+                }
+
+                return (
+                    '<tr>' +
+                    '<td><strong>' + r.course_name + '</strong></td>' +
+                    '<td>' +
+                    '<div class="rt-teacher">' +
+                    '<img class="rt-photo"' +
+                    ' src="/static/images/' + photo + '"' +
+                    ' onerror="this.src=\'/static/images/default.svg\'"' +
+                    ' alt="" />' +
+                    '<span>' + (r.teacher || '—') + '</span>' +
+                    '</div>' +
+                    '</td>' +
+                    '<td>' + r.total_credits + ' ' + labNote + '</td>' +
+                    markCells +
+                    '<td class="mono"><strong>' + r.total_percent + '%</strong></td>' +
+                    labCells +
+                    '<td><span class="' + gradeClass + '">' + r.grade + '</span></td>' +
+                    '<td class="mono">' + r.grade_point + '</td>' +
+                    '<td>' + r.remark + '</td>' +
+                    '</tr>'
+                );
+            }).join('');
+
+            var sec = document.getElementById('resultsSection');
+            sec.classList.remove('hidden');
+            sec.scrollIntoView({ behavior: 'smooth' });
+        }
+
+
+        // ── Predictor ────────────────────────────────────────────────────
+        function setPredMode(mode) {
+            predMode = mode;
+            document.getElementById('modeBreakdown').classList.toggle('active', mode === 'breakdown');
+            document.getElementById('modeTotal').classList.toggle('active', mode === 'total');
+            document.getElementById('predBreakdown').classList.toggle('hidden', mode === 'total');
+            document.getElementById('predTotal').classList.toggle('hidden', mode === 'breakdown');
+            document.getElementById('predictResult').classList.add('hidden');
+        }
+
+        async function predictLive() {
+            var prevCGPA = parseFloat(document.getElementById('prevCGPA').value) || 0;
+            var prevCredits = parseFloat(document.getElementById('prevCredits').value) || 0;
+            var payload;
+
+            if (predMode === 'total') {
+                var t = parseFloat(document.getElementById('predTot').value) || 0;
+                var cr = parseFloat(document.getElementById('predCr2').value) || 3;
+                if (!t) { document.getElementById('predictResult').classList.add('hidden'); return; }
+                payload = {
+                    out_of_100: true, total_100_marks: t,
+                    total_credits: cr, previous_cgpa: prevCGPA, previous_credits: prevCredits,
+                };
+            } else {
+                var mid = parseFloat(document.getElementById('predMid').value) || 0;
+                var ses = parseFloat(document.getElementById('predSes').value) || 0;
+                var fin = parseFloat(document.getElementById('predFin').value) || 0;
+                var cr = parseFloat(document.getElementById('predCr').value) || 3;
+                if (!mid && !ses && !fin) { document.getElementById('predictResult').classList.add('hidden'); return; }
+                payload = {
+                    out_of_100: false, midterm_marks: mid, sessional_marks: ses, final_marks: fin,
+                    total_credits: cr, previous_cgpa: prevCGPA, previous_credits: prevCredits,
+                };
+            }
+
+            var data = await fetch('/api/predict', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            }).then(function (r) { return r.json(); });
+
+            document.getElementById('prPct').textContent = data.total_percent + '%';
+            document.getElementById('prGrade').textContent = data.grade;
+            document.getElementById('prGrade').className = 'pb-val g-' + data.grade.replace('+', 'p');
+            document.getElementById('prCGPA').textContent = data.predicted_cgpa;
+
+            var chEl = document.getElementById('prChange');
+            chEl.textContent = (data.cgpa_change >= 0 ? '▲ +' : '▼ ') + data.cgpa_change;
+            chEl.className = 'pb-val ' + (data.cgpa_change >= 0 ? 'up' : 'down');
+
+            document.getElementById('prRemark').textContent = 'Remark: ' + data.remark;
+            document.getElementById('predictResult').classList.remove('hidden');
+        }
+
+
+        // ── Exports ──────────────────────────────────────────────────────
+        async function exportExcel() {
+            if (!lastResults) { alert('Please calculate grades first!'); return; }
+            var blob = await fetch('/api/export/excel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(lastResults),
+            }).then(function (r) { return r.blob(); });
+            downloadBlob(blob, 'grade_report.xlsx');
+        }
+
+        async function exportPDF() {
+            if (!lastResults) { alert('Please calculate grades first!'); return; }
+            var blob = await fetch('/api/export/pdf', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(lastResults),
+            }).then(function (r) { return r.blob(); });
+            downloadBlob(blob, 'grade_report.pdf');
+        }
+
+        function downloadBlob(blob, filename) {
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        }
+
+
+        // ── Grade calculation helpers (mirrors Python backend) ────────────
+        function computePercent(mid, ses, fin) {
+            return Math.round(((mid / 30) * 30 + (ses / 20) * 20 + (fin / 50) * 50) * 100) / 100;
+        }
+
+        function gradeFromPct(p) {
+            if (p >= 85) return { grade: 'A', gp: 4.00, remark: 'Excellent' };
+            if (p >= 78) return { grade: 'B+', gp: 3.50, remark: 'Outstanding' };
+            if (p >= 70) return { grade: 'B', gp: 3.00, remark: 'Good' };
+            if (p >= 65) return { grade: 'C+', gp: 2.50, remark: 'Above Average' };
+            if (p >= 60) return { grade: 'C', gp: 2.00, remark: 'Average' };
+            if (p >= 55) return { grade: 'D+', gp: 1.50, remark: 'Below Average' };
+            if (p >= 50) return { grade: 'D', gp: 1.00, remark: 'Poor but Passing' };
+            return { grade: 'F', gp: 0.00, remark: 'Failing' };
+        }
+
+        // Converts "Semester 5" → "Semester_5" for use as HTML element IDs
+        function safeId(str) {
+            return String(str).replace(/[^a-zA-Z0-9]/g, '_');
+        }
+
+        // ── Typewriter effect ────────────────────────────────────────────
+        (function () {
+            var phrases = ['Academic Success', 'GPA Effortlessly', 'Your Future Grade', 'Semester Results'];
+            var idx = 0, charIdx = 0, deleting = false;
+            var el = document.getElementById('typedText');
+            function type() {
+                if (!el) return;
+                var current = phrases[idx];
+                if (!deleting) {
+                    el.textContent = current.substring(0, charIdx + 1);
+                    charIdx++;
+                    if (charIdx === current.length) {
+                        deleting = true;
+                        setTimeout(type, 1800);
+                        return;
+                    }
+                } else {
+                    el.textContent = current.substring(0, charIdx - 1);
+                    charIdx--;
+                    if (charIdx === 0) {
+                        deleting = false;
+                        idx = (idx + 1) % phrases.length;
+                    }
+                }
+                setTimeout(type, deleting ? 60 : 90);
+            }
+            setTimeout(type, 800);
+        })();
+
+
+
+        // ── Optimized Scroll Reveal & Parallax ───────────────────────────
+        (function () {
+            var parallaxBg = document.getElementById('parallaxBg');
+            var observer = new IntersectionObserver(function (entries) {
+                entries.forEach(function (entry) {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('active');
+                    }
+                });
+            }, {
+                threshold: 0.05,
+                rootMargin: '0px 0px -50px 0px'
+            });
+
+            document.querySelectorAll('.reveal').forEach(function (el) {
+                observer.observe(el);
+            });
+
+            // GPU-Accelerated Parallax (Throttle with requestAnimationFrame)
+            var lastScrollY = window.pageYOffset;
+            var ticking = false;
+
+            function updateParallax() {
+                var scrolled = window.pageYOffset;
+                // Move background at 0.3 speed (GPU accelerated)
+                var yPos = -(scrolled * 0.3);
+                if (parallaxBg) {
+                    parallaxBg.style.transform = 'translate3d(0, ' + yPos + 'px, 0)';
+                }
+                ticking = false;
+            }
+
+            window.addEventListener('scroll', function () {
+                if (!ticking) {
+                    window.requestAnimationFrame(updateParallax);
+                    ticking = true;
+                }
+            }, { passive: true });
+        })();
+
+
+        // ── Interactive Particles System ─────────────────────────────────
+        (function () {
+            const canvas = document.getElementById('particleCanvas');
+            const ctx = canvas.getContext('2d');
+            let particles = [];
+            const particleCount = 40; // Reduced count
+
+            const mouse = { x: null, y: null, radius: 80 }; // Reduced radius
+            window.addEventListener('mousemove', (e) => {
+                mouse.x = e.x;
+                mouse.y = e.y;
+            });
+
+            class Particle {
+                constructor() {
+                    this.x = Math.random() * canvas.width;
+                    this.y = Math.random() * canvas.height;
+                    this.size = Math.random() * 2 + 1;
+                    this.baseX = this.x;
+                    this.baseY = this.y;
+                    this.density = (Math.random() * 30) + 1;
+                    this.color = `rgba(99, 102, 241, ${Math.random() * 0.5 + 0.2})`;
+                }
+                draw() {
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+                update() {
+                    let dx = mouse.x - this.x;
+                    let dy = mouse.y - this.y;
+                    let distance = Math.sqrt(dx * dx + dy * dy);
+                    let forceDirectionX = dx / distance;
+                    let forceDirectionY = dy / distance;
+                    let maxDistance = mouse.radius;
+                    let force = (maxDistance - distance) / maxDistance;
+                    let directionX = forceDirectionX * force * (this.density * 0.4); // Subdued force
+                    let directionY = forceDirectionY * force * (this.density * 0.4); // Subdued force
+
+                    if (distance < mouse.radius) {
+                        this.x -= directionX;
+                        this.y -= directionY;
+                    } else {
+                        if (this.x !== this.baseX) {
+                            let dx = this.x - this.baseX;
+                            this.x -= dx / 10;
+                        }
+                        if (this.y !== this.baseY) {
+                            let dy = this.y - this.baseY;
+                            this.y -= dy / 10;
+                        }
+                    }
+                }
+            }
+
+            function init() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                particles = [];
+                for (let i = 0; i < particleCount; i++) {
+                    particles.push(new Particle());
+                }
+            }
+
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                for (let i = 0; i < particles.length; i++) {
+                    particles[i].draw();
+                    particles[i].update();
+                }
+                requestAnimationFrame(animate);
+            }
+
+            init();
+            animate();
+            window.addEventListener('resize', init);
+        })();
+
+
+        // ── Confetti Trigger ─────────────────────────────────────────────
+        function triggerConfetti(tier = 'silver') {
+            const duration = 3 * 1000;
+            const animationEnd = Date.now() + duration;
+            const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 3000 };
+
+            function randomInRange(min, max) {
+                return Math.random() * (max - min) + min;
+            }
+
+            const interval = setInterval(function () {
+                const timeLeft = animationEnd - Date.now();
+                if (timeLeft <= 0) return clearInterval(interval);
+
+                const particleCount = 50 * (timeLeft / duration);
+
+                if (tier === 'gold') {
+                    // Firework effect for gold
+                    confetti(Object.assign({}, defaults, {
+                        particleCount,
+                        colors: ['#F59E0B', '#FCD34D', '#FFF', '#B45309'],
+                        origin: { x: randomInRange(0.1, 0.9), y: Math.random() - 0.2 }
+                    }));
+                } else {
+                    // Standard cyan/blue for silver
+                    confetti(Object.assign({}, defaults, {
+                        particleCount,
+                        colors: ['#6366F1', '#22D3EE', '#818CF8'],
+                        origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
+                    }));
+                    confetti(Object.assign({}, defaults, {
+                        particleCount,
+                        colors: ['#6366F1', '#22D3EE', '#818CF8'],
+                        origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
+                    }));
+                }
+            }, 250);
+        }
+
+        // ── Success Feedback Logic ───────────────────────────────────────
+        function showSuccessFeedback(gpa) {
+            const modal = document.getElementById('successModal');
+            const content = document.getElementById('modalContent');
+            const title = document.getElementById('modalTitle');
+            const msg = document.getElementById('modalMsg');
+            const icon = document.getElementById('modalIcon');
+            const gpaVal = document.getElementById('modalGPA');
+
+            gpaVal.textContent = parseFloat(gpa).toFixed(2);
+            content.classList.remove('tier-silver', 'tier-gold');
+
+            if (gpa >= 3.4) {
+                content.classList.add('tier-gold');
+                title.textContent = "Masterful!";
+                msg.textContent = "You're in the elite tier! Your dedication is truly inspiring.";
+                icon.textContent = "🏆";
+                triggerConfetti('gold');
+            } else {
+                content.classList.add('tier-silver');
+                title.textContent = "Impressive!";
+                msg.textContent = "Great work! You're making excellent progress. Keep pushing for the stars!";
+                icon.textContent = "✨";
+                triggerConfetti('silver');
+            }
+
+            modal.classList.add('visible');
+        }
+
+        function closeSuccessModal() {
+            document.getElementById('successModal').classList.remove('visible');
+        }
+
+    </script>
+</body>
+
+</html>
